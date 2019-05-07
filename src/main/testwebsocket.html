@@ -2,65 +2,190 @@
 <html>
 <head>
     <title>My WebSocket</title>
+    <script src="jquery-3.3.1.min.js"></script>
+    <script src="sketchpad.min.js"></script>
+    <script type="text/javascript">
+        var websocket = null;
+        var randomUuid = uuid();
+        var color_canvas = '#000000';
+        var size_canvas = 1;
+
+        //生成uuid
+        function uuid() {
+            var s = [];
+            var hexDigits = "0123456789abcdef";
+            for (var i = 0; i < 36; i++) {
+                s[i] = hexDigits.substr(Math.floor(Math.random() * 0x10), 1);
+            }
+            s[14] = "4";  // bits 12-15 of the time_hi_and_version field to 0010
+            s[19] = hexDigits.substr((s[19] & 0x3) | 0x8, 1);  // bits 6-7 of the clock_seq_hi_and_reserved to 01
+            s[8] = s[13] = s[18] = s[23] = "-";
+
+            var uuid = s.join("");
+            return uuid;
+        }
+
+        //判断当前浏览器是否支持WebSocket
+        if('WebSocket' in window){
+            websocket = new WebSocket("ws://localhost:8080/websocket");
+        }
+        else{
+            alert('Not support websocket')
+        }
+
+        //连接发生错误的回调方法
+        websocket.onerror = function(){
+            setMessageInnerHTML("error");
+        };
+
+        //连接成功建立的回调方法
+        websocket.onopen = function(event){
+            setMessageInnerHTML("open");
+        }
+
+        //接收到消息的回调方法
+        websocket.onmessage = function(event){
+            var str = event.data;
+            var objStr = JSON.parse(str);
+            var uuid = objStr.uuid;
+            var json = objStr.json;
+            //不是自己才刷新
+            if(uuid != randomUuid){
+                try {
+                    var obj = JSON.parse(json);
+                    obj.element = '#sketchpad';
+                    sketchpad = new Sketchpad(obj);
+                }catch (e) {
+                    console.info('出错了')
+                }
+            }
+            //设置颜色粗细为自己的
+            $('#color-picker').val(color_canvas);
+            $('#size-picker').val(size_canvas);
+            sketchpad.color = color_canvas;
+            sketchpad.penSize = size_canvas;
+        }
+
+        //连接关闭的回调方法
+        websocket.onclose = function(){
+            setMessageInnerHTML("close");
+        }
+
+        //监听窗口关闭事件，当窗口关闭时，主动去关闭websocket连接，防止连接还没断开就关闭窗口，server端会抛异常。
+        window.onbeforeunload = function(){
+            websocket.close();
+        }
+
+        //将消息显示在网页上
+        function setMessageInnerHTML(innerHTML){
+            document.getElementById('message').innerHTML += innerHTML + '<br/>';
+        }
+
+        //关闭连接
+        function closeWebSocket(){
+            websocket.close();
+        }
+
+        //发送消息
+        function send(){
+            var message = document.getElementById('text').value;
+            websocket.send(message);
+        }
+    </script>
+
+    <script>
+        var sketchpad;
+        var w = 600;
+        var h = 400;
+        //初始化函数
+        $(function () {
+            initSketchpad();
+            $('#color-picker').change(color);
+            $('#color-picker').val('#000000');
+            $('#size-picker').change(size);
+            $('#size-picker').val(1);
+        })
+        //创建画板
+        function initSketchpad() {
+            sketchpad = new Sketchpad({
+                element: '#sketchpad',
+                width: w,
+                height: h
+            });
+        }
+        //撤销
+        function undo() {
+            canvasSend();
+            sketchpad.undo();
+        }
+        //恢复
+        function redo() {
+            canvasSend();
+            sketchpad.redo();
+        }
+        //设置颜色
+        function color(event) {
+            sketchpad.color = $(event.target).val();
+            color_canvas = sketchpad.color;
+        }
+        //设置粗细
+        function size(event) {
+            sketchpad.penSize = $(event.target).val();
+            size_canvas = sketchpad.penSize;
+        }
+        //动画效果
+        function animateSketchpad() {
+            sketchpad.animate(10);
+        }
+
+        //鼠标
+        $(function () {
+            $('#sketchpad').mouseup(function() {
+                canvasSend();
+            });
+        });
+
+        //清除
+        function clearAll() {
+            initSketchpad();
+            canvasSend();
+        }
+
+        //发送画板数据
+        function canvasSend() {
+            setTimeout(function () {
+                var json = sketchpad.toJSON();  // json 就是 settings 转json 之后的字符串
+                var obj = {};
+                obj.uuid = randomUuid;
+                obj.json = json;
+                var str = JSON.stringify(obj);
+                websocket.send(str);
+            });
+        }
+
+    </script>
+
 </head>
-
 <body>
-Welcome<br/>
-<input id="text" type="text" /><button onclick="send()">Send</button>    <button onclick="closeWebSocket()">Close</button>
-<div id="message">
-</div>
+
+    <div style="text-align: center">
+        <canvas class="sketchpad" id="sketchpad"></canvas>
+    </div>
+    <div style="text-align: center">
+        <button onclick="clearAll()">clearAll</button>
+        <button onclick="undo()">undo</button>
+        <button onclick="redo()">redo</button>
+        <input id="color-picker" type="color">
+        <input id="size-picker" type="range" min="1" max="50">
+        <button onclick="animateSketchpad()">animate</button>
+        <a href="javascript:void (0)" onclick="animateSketchpad()">animate</a>
+    </div>
+
+
+    <div>webSocket</div>
+    <input id="text" type="text"/>
+    <button onclick="send()">Send</button>
+    <button onclick="closeWebSocket()">Close</button>
+    <div id="message"></div>
 </body>
-
-<script type="text/javascript">
-    var websocket = null;
-
-    //判断当前浏览器是否支持WebSocket
-    if('WebSocket' in window){
-        websocket = new WebSocket("ws://localhost:8080/websocket");
-    }
-    else{
-        alert('Not support websocket')
-    }
-
-    //连接发生错误的回调方法
-    websocket.onerror = function(){
-        setMessageInnerHTML("error");
-    };
-
-    //连接成功建立的回调方法
-    websocket.onopen = function(event){
-        setMessageInnerHTML("open");
-    }
-
-    //接收到消息的回调方法
-    websocket.onmessage = function(event){
-        setMessageInnerHTML(event.data);
-    }
-
-    //连接关闭的回调方法
-    websocket.onclose = function(){
-        setMessageInnerHTML("close");
-    }
-
-    //监听窗口关闭事件，当窗口关闭时，主动去关闭websocket连接，防止连接还没断开就关闭窗口，server端会抛异常。
-    window.onbeforeunload = function(){
-        websocket.close();
-    }
-
-    //将消息显示在网页上
-    function setMessageInnerHTML(innerHTML){
-        document.getElementById('message').innerHTML += innerHTML + '<br/>';
-    }
-
-    //关闭连接
-    function closeWebSocket(){
-        websocket.close();
-    }
-
-    //发送消息
-    function send(){
-        var message = document.getElementById('text').value;
-        websocket.send(message);
-    }
-</script>
 </html>

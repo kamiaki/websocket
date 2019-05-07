@@ -15,6 +15,8 @@ import java.util.concurrent.CopyOnWriteArraySet;
 public class MyWebSocket {
     //静态变量，用来记录当前在线连接数。应该把它设计成线程安全的。
     private static int onlineCount = 0;
+    //用来存储图像信息
+    private static String canvas = "{\"width\":400,\"height\":400,\"strokes\":[],\"undoHistory\":[]}";
 
     //concurrent包的线程安全Set，用来存放每个客户端对应的MyWebSocket对象。
     private static CopyOnWriteArraySet<MyWebSocket> webSocketSet = new CopyOnWriteArraySet<MyWebSocket>();
@@ -31,7 +33,7 @@ public class MyWebSocket {
         addOnlineCount();           //在线数加1
         System.out.println("有新连接加入！当前在线人数为" + getOnlineCount());
         try {
-            sendMessage("一段信息");
+            sendMessage(canvas);
         } catch (IOException e) {
             System.out.println("IO异常");
         }
@@ -54,7 +56,7 @@ public class MyWebSocket {
     @OnMessage
     public void onMessage(String message, Session session) {
         System.out.println("来自客户端的消息:" + message);
-
+        canvas = message;//将画板数据填入
         //群发消息
         for (MyWebSocket item : webSocketSet) {
             try {

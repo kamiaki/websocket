@@ -10,13 +10,13 @@ import javax.websocket.server.ServerEndpoint;
 import java.io.IOException;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-@ServerEndpoint(value = "/websocket")
+@ServerEndpoint(value = "/wsSketchpad")
 @Component
 public class MyWebSocket {
     //静态变量，用来记录当前在线连接数。应该把它设计成线程安全的。
     private static int onlineCount = 0;
     //用来存储图像信息
-    private static String canvas = "{\"width\":400,\"height\":400,\"strokes\":[],\"undoHistory\":[]}";
+    private static String canvas = "{\"uuid\":\"a947061b-faed-4fd7-88a4-756639b56375\",\"json\":{\"width\":400,\"height\":400,\"strokes\":[],\"undoHistory\":[]}}";
 
     //concurrent包的线程安全Set，用来存放每个客户端对应的MyWebSocket对象。
     private static CopyOnWriteArraySet<MyWebSocket> webSocketSet = new CopyOnWriteArraySet<MyWebSocket>();

@@ -1,15 +1,24 @@
-<!DOCTYPE HTML>
-<html>
+<!DOCTYPE html>
+<html lang="en"  xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>My WebSocket</title>
-    <script src="jquery-3.3.1.min.js"></script>
-    <script src="sketchpad.min.js"></script>
-    <script type="text/javascript">
+    <meta charset="UTF-8">
+    <title>画板</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <script th:src="@{/package/jquery-3.3.1.min.js}"></script>
+    <script th:src="@{/package/sketchpad.min.js}"></script>
+
+    <script th:inline="javascript">
+        //项目路径 例如:localhost:8086/myWeb/
+        var basePath = [[${#httpServletRequest.getServerName() + ":" + #httpServletRequest.getServerPort() + #httpServletRequest.getContextPath()}]];
+        var url_wsSketchpad = '/wsSketchpad';
+
         var websocket = null;
+        var sketchpad = null;
         var randomUuid = uuid();
+        var w = 600;
+        var h = 400;
         var color_canvas = '#000000';
         var size_canvas = 1;
-
         //生成uuid
         function uuid() {
             var s = [];
@@ -25,38 +34,48 @@
             return uuid;
         }
 
+        //初始化
+        $(function () {
+            $('#color-picker').change(color);
+            $('#color-picker').val('#000000');
+            $('#size-picker').change(size);
+            $('#size-picker').val(1);
+            $('#sketchpad').mouseup(function() {
+                canvasSend();
+            });
+            $('#sketchpad').on('touchend',function(){
+                canvasSend();
+            })
+        })
         //判断当前浏览器是否支持WebSocket
         if('WebSocket' in window){
-            websocket = new WebSocket("ws://localhost:8080/websocket");
+            websocket = new WebSocket("ws://" + basePath + url_wsSketchpad);
         }
         else{
             alert('Not support websocket')
         }
-
         //连接发生错误的回调方法
         websocket.onerror = function(){
-            setMessageInnerHTML("error");
+            console.info("ws error");
         };
-
         //连接成功建立的回调方法
         websocket.onopen = function(event){
-            setMessageInnerHTML("open");
+            console.info('ws link');
         }
-
         //接收到消息的回调方法
         websocket.onmessage = function(event){
-            var str = event.data;
-            var objStr = JSON.parse(str);
-            var uuid = objStr.uuid;
-            var json = objStr.json;
+            var msgJson = event.data;
+            var objJson = JSON.parse(msgJson);
+            var uuid = objJson.uuid;
+            var json = objJson.json;
             //不是自己才刷新
             if(uuid != randomUuid){
                 try {
-                    var obj = JSON.parse(json);
-                    obj.element = '#sketchpad';
-                    sketchpad = new Sketchpad(obj);
+                    var sketchpadObj = JSON.parse(json);
+                    sketchpadObj.element = '#sketchpad';
+                    sketchpad = new Sketchpad(sketchpadObj);
                 }catch (e) {
-                    console.info('出错了')
+                    console.info('sketchpad error')
                 }
             }
             //设置颜色粗细为自己的
@@ -65,46 +84,24 @@
             sketchpad.color = color_canvas;
             sketchpad.penSize = size_canvas;
         }
-
         //连接关闭的回调方法
         websocket.onclose = function(){
-            setMessageInnerHTML("close");
+            console.info('ws close');
         }
-
         //监听窗口关闭事件，当窗口关闭时，主动去关闭websocket连接，防止连接还没断开就关闭窗口，server端会抛异常。
         window.onbeforeunload = function(){
             websocket.close();
         }
-
-        //将消息显示在网页上
-        function setMessageInnerHTML(innerHTML){
-            document.getElementById('message').innerHTML += innerHTML + '<br/>';
-        }
-
         //关闭连接
         function closeWebSocket(){
             websocket.close();
         }
-
         //发送消息
-        function send(){
-            var message = document.getElementById('text').value;
+        function send(message){
             websocket.send(message);
         }
-    </script>
 
-    <script>
-        var sketchpad;
-        var w = 600;
-        var h = 400;
-        //初始化函数
-        $(function () {
-            initSketchpad();
-            $('#color-picker').change(color);
-            $('#color-picker').val('#000000');
-            $('#size-picker').change(size);
-            $('#size-picker').val(1);
-        })
+        //////////////////////////////////////画板
         //创建画板
         function initSketchpad() {
             sketchpad = new Sketchpad({
@@ -137,20 +134,11 @@
         function animateSketchpad() {
             sketchpad.animate(10);
         }
-
-        //鼠标
-        $(function () {
-            $('#sketchpad').mouseup(function() {
-                canvasSend();
-            });
-        });
-
         //清除
         function clearAll() {
             initSketchpad();
             canvasSend();
         }
-
         //发送画板数据
         function canvasSend() {
             setTimeout(function () {
@@ -162,30 +150,20 @@
                 websocket.send(str);
             });
         }
-
     </script>
-
 </head>
 <body>
-
     <div style="text-align: center">
         <canvas class="sketchpad" id="sketchpad"></canvas>
     </div>
     <div style="text-align: center">
-        <button onclick="clearAll()">clearAll</button>
         <button onclick="undo()">undo</button>
         <button onclick="redo()">redo</button>
         <input id="color-picker" type="color">
         <input id="size-picker" type="range" min="1" max="50">
         <button onclick="animateSketchpad()">animate</button>
         <a href="javascript:void (0)" onclick="animateSketchpad()">animate</a>
+        <button onclick="clearAll()">clearAll</button>
     </div>
-
-
-    <div>webSocket</div>
-    <input id="text" type="text"/>
-    <button onclick="send()">Send</button>
-    <button onclick="closeWebSocket()">Close</button>
-    <div id="message"></div>
 </body>
 </html>

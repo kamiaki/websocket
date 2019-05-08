@@ -15,8 +15,8 @@
         var websocket = null;
         var sketchpad = null;
         var randomUuid = uuid();
-        var w = 600;
-        var h = 400;
+        var w = 600;//要和后端初始化的尺寸一致
+        var h = 400;//要和后端初始化的尺寸一致
         var color_canvas = '#000000';
         var size_canvas = 1;
         //生成uuid
@@ -43,6 +43,7 @@
             $('#sketchpad').mouseup(function() {
                 canvasSend();
             });
+            //有问题
             $('#sketchpad').on('touchend',function(){
                 canvasSend();
             })

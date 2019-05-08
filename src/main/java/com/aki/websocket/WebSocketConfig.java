@@ -25,6 +25,13 @@ public class WebSocketConfig implements WebMvcConfigurer, ServletContextInitiali
         return new ServerEndpointExporter();
     }
 
+    /**
+     * @Configuration 这个注解针对这个方法
+     * @ComponentScan 这个注解针对这个方法
+     * @EnableAutoConfiguration 这个注解针对这个方法
+     * @param servletContext
+     * @throws ServletException
+     */
     @Override
     public void onStartup(ServletContext servletContext) throws ServletException {
         System.out.println("org.apache.tomcat.websocket.textBufferSize");

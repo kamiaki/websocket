@@ -2,10 +2,7 @@ package com.aki.websocket;
 
 import org.springframework.stereotype.Component;
 
-import javax.websocket.OnClose;
-import javax.websocket.OnMessage;
-import javax.websocket.OnOpen;
-import javax.websocket.Session;
+import javax.websocket.*;
 import javax.websocket.server.ServerEndpoint;
 import java.io.IOException;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -13,16 +10,11 @@ import java.util.concurrent.CopyOnWriteArraySet;
 @ServerEndpoint(value = "/wsSketchpad")
 @Component
 public class MyWebSocket {
-    //静态变量，用来记录当前在线连接数。应该把它设计成线程安全的。
-    private static int onlineCount = 0;
-    //用来存储图像信息，初始化了画板
-    private static String canvas = "init";
+    private static int onlineCount = 0; //用户数
+    private static String canvas = "init";  //画板信息
+    private static CopyOnWriteArraySet<MyWebSocket> webSocketSet = new CopyOnWriteArraySet<MyWebSocket>();  //用户集合（线程安全）
 
-    //concurrent包的线程安全Set，用来存放每个客户端对应的MyWebSocket对象。
-    private static CopyOnWriteArraySet<MyWebSocket> webSocketSet = new CopyOnWriteArraySet<MyWebSocket>();
-
-    //与某个客户端的连接会话，需要通过它来给客户端发送数据
-    private Session session;
+    private Session session;//某用户的会话
 
     /**
      * 连接建立成功调用的方法*/
@@ -51,7 +43,6 @@ public class MyWebSocket {
 
     /**
      * 收到客户端消息后调用的方法
-     *
      * @param message 客户端发送过来的消息*/
     @OnMessage
     public void onMessage(String message, Session session) {
@@ -69,19 +60,24 @@ public class MyWebSocket {
 
     /**
      * 发生错误时调用
-     @OnError
+     * @param session
+     * @param error
      */
-     public void onError(Session session, Throwable error) {
-     System.out.println("发生错误");
-     error.printStackTrace();
-     }
+    @OnError
+    public void onError(Session session, Throwable error) {
+        System.out.println("发生错误");
+        error.printStackTrace();
+    }
 
-
-     public void sendMessage(String message) throws IOException {
-     this.session.getBasicRemote().sendText(message);
-     //this.session.getAsyncRemote().sendText(message);
-     }
-
+    /**
+     * 发送消息
+     * @param message
+     * @throws IOException
+     */
+    public void sendMessage(String message) throws IOException {
+        this.session.getBasicRemote().sendText(message);
+        //this.session.getAsyncRemote().sendText(message);
+    }
 
      /**
       * 群发自定义消息
@@ -96,14 +92,13 @@ public class MyWebSocket {
         }
     }
 
+    //监测在线用户数
     public static synchronized int getOnlineCount() {
         return onlineCount;
     }
-
     public static synchronized void addOnlineCount() {
         MyWebSocket.onlineCount++;
     }
-
     public static synchronized void subOnlineCount() {
         MyWebSocket.onlineCount--;
     }

@@ -34,6 +34,10 @@
             return uuid;
         }
 
+        //触屏事件初始化
+        window.ontouchend = function() {
+            canvasSend();
+        }
         //初始化
         $(function () {
             $('#color-picker').val(color_canvas);

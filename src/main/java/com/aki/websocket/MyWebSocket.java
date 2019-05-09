@@ -16,7 +16,7 @@ public class MyWebSocket {
     //静态变量，用来记录当前在线连接数。应该把它设计成线程安全的。
     private static int onlineCount = 0;
     //用来存储图像信息，初始化了画板
-    private static String canvas = "{\"uuid\":\"\",\"json\":{\"width\":400,\"height\":400,\"strokes\":[],\"undoHistory\":[]}}";
+    private static String canvas = "init";
 
     //concurrent包的线程安全Set，用来存放每个客户端对应的MyWebSocket对象。
     private static CopyOnWriteArraySet<MyWebSocket> webSocketSet = new CopyOnWriteArraySet<MyWebSocket>();

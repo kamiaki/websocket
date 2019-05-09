@@ -15,8 +15,8 @@
         var websocket = null;
         var sketchpad = null;
         var randomUuid = uuid();
-        var w = 600;//要和后端初始化的尺寸一致
-        var h = 400;//要和后端初始化的尺寸一致
+        var w = 600;
+        var h = 400;
         var color_canvas = '#000000';
         var size_canvas = 1;
         //生成uuid
@@ -36,17 +36,13 @@
 
         //初始化
         $(function () {
+            $('#color-picker').val(color_canvas);
+            $('#size-picker').val(size_canvas);
             $('#color-picker').change(color);
-            $('#color-picker').val('#000000');
             $('#size-picker').change(size);
-            $('#size-picker').val(1);
             $('#sketchpad').mouseup(function() {
                 canvasSend();
             });
-            //有问题
-            $('#sketchpad').on('touchend',function(){
-                canvasSend();
-            })
         })
         //判断当前浏览器是否支持WebSocket
         if('WebSocket' in window){
@@ -66,17 +62,22 @@
         //接收到消息的回调方法
         websocket.onmessage = function(event){
             var msgJson = event.data;
-            var objJson = JSON.parse(msgJson);
-            var uuid = objJson.uuid;
-            var json = objJson.json;
-            //不是自己才刷新
-            if(uuid != randomUuid){
-                try {
-                    var sketchpadObj = JSON.parse(json);
-                    sketchpadObj.element = '#sketchpad';
-                    sketchpad = new Sketchpad(sketchpadObj);
-                }catch (e) {
-                    console.info('sketchpad error')
+            //画画板
+            if(msgJson == 'init'){
+                initSketchpad();
+            }else{
+                var objJson = JSON.parse(msgJson);
+                var uuid = objJson.uuid;
+                var json = objJson.json;
+                //不是自己才刷新
+                if(uuid != randomUuid){
+                    try {
+                        var sketchpadObj = JSON.parse(json);
+                        sketchpadObj.element = '#sketchpad';
+                        sketchpad = new Sketchpad(sketchpadObj);
+                    }catch (e) {
+                        console.info('sketchpad error')
+                    }
                 }
             }
             //设置颜色粗细为自己的
@@ -98,7 +99,7 @@
             websocket.close();
         }
         //发送消息
-        function send(message){
+        function wsSend(message){
             websocket.send(message);
         }
 
@@ -148,7 +149,7 @@
                 obj.uuid = randomUuid;
                 obj.json = json;
                 var str = JSON.stringify(obj);
-                websocket.send(str);
+                wsSend(str);
             });
         }
     </script>
@@ -163,7 +164,6 @@
         <input id="color-picker" type="color">
         <input id="size-picker" type="range" min="1" max="50">
         <button onclick="animateSketchpad()">animate</button>
-        <a href="javascript:void (0)" onclick="animateSketchpad()">animate</a>
         <button onclick="clearAll()">clearAll</button>
     </div>
 </body>

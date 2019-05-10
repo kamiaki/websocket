@@ -6,48 +6,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <script th:src="@{/package/jquery-3.3.1.min.js}"></script>
     <script th:src="@{/package/sketchpad.min.js}"></script>
+    <script th:src="@{/res/js/util.js}"></script>
 
     <script th:inline="javascript">
         //项目路径 例如:localhost:8086/myWeb/
-        var basePath = [[${#httpServletRequest.getServerName() + ":" + #httpServletRequest.getServerPort() + #httpServletRequest.getContextPath()}]];
-        var url_wsSketchpad = '/wsSketchpad';
         var websocket = null;
+        var basePath = [[${#httpServletRequest.getServerName() + ":" + #httpServletRequest.getServerPort() + #httpServletRequest.getContextPath()}]];
+        var url_wsSketchpad = '/paint';
+        //画板配置
         var sketchpad = null;
-        var randomUuid = uuid();
-        var w = 600;
-        var h = 400;
-        var color_canvas = '#000000';
-        var size_canvas = 1;
-        //生成uuid
-        function uuid() {
-            var s = [];
-            var hexDigits = "0123456789abcdef";
-            for (var i = 0; i < 36; i++) {
-                s[i] = hexDigits.substr(Math.floor(Math.random() * 0x10), 1);
-            }
-            s[14] = "4";  // bits 12-15 of the time_hi_and_version field to 0010
-            s[19] = hexDigits.substr((s[19] & 0x3) | 0x8, 1);  // bits 6-7 of the clock_seq_hi_and_reserved to 01
-            s[8] = s[13] = s[18] = s[23] = "-";
-            var uuid = s.join("");
-            return uuid;
-        }
+        var painterId = uuid();
+        var sketchpad_width = 600;
+        var sketchpad_height = 400;
+        var sketchpad_color = '#000000';
+        var sketchpad_size = 1;
 
         //触屏事件初始化
         window.ontouchend = function() {
-            canvasSend();
+            sketchpad_send();
         }
         //关闭窗口，关闭ws
         window.onbeforeunload = function(){
-            closeWebSocket();
+            ws_close();
         }
         //初始化
         $(function () {
-            $('#color-picker').val(color_canvas);
-            $('#size-picker').val(size_canvas);
-            $('#color-picker').change(color);
-            $('#size-picker').change(size);
+            $('#color-picker').val(sketchpad_color);
+            $('#size-picker').val(sketchpad_size);
+            $('#color-picker').change(sketchpad_setColor);
+            $('#size-picker').change(sketchpad_setSize);
             $('#sketchpad').mouseup(function() {
-                canvasSend();
+                sketchpad_send();
             });
         })
         //判断当前浏览器是否支持WebSocket
@@ -57,7 +46,7 @@
             alert('你的浏览器不给力呀 ╮(╯-╰)╭')
         }
         //关闭连接
-        function closeWebSocket(){
+        function ws_close(){
             websocket.close();
         }
         //连接成功建立的回调方法
@@ -74,98 +63,98 @@
         };
         //接收到消息的回调方法
         websocket.onmessage = function(event){
-            var msgJson = event.data;
+            var canvasMsg = event.data;
             //画画板
-            if(msgJson == 'init'){
-                initSketchpad();
+            if(canvasMsg == 'initCanvas'){
+                sketchpad_init();
             }else{
-                var objJson = JSON.parse(msgJson);
-                var uuid = objJson.uuid;
-                var json = objJson.json;
-                //不是自己才刷新
-                if(uuid != randomUuid){
-                    try {
-                        var sketchpadObj = JSON.parse(json);
+                try {
+                    var objJson = JSON.parse(canvasMsg);
+                    var paintId = objJson.paintId;
+                    var sketchpadJson = objJson.sketchpadJson;
+                    //不是自己才刷新
+                    if(paintId != painterId){
+                        var sketchpadObj = JSON.parse(sketchpadJson);
                         sketchpadObj.element = '#sketchpad';
                         sketchpad = new Sketchpad(sketchpadObj);
-                    }catch (e) {
-                        console.info('sketchpad error')
                     }
+                }catch (e) {
+                    console.info('sketchpad error')
                 }
             }
             //设置颜色粗细为自己的
-            $('#color-picker').val(color_canvas);
-            $('#size-picker').val(size_canvas);
-            sketchpad.color = color_canvas;
-            sketchpad.penSize = size_canvas;
+            $('#color-picker').val(sketchpad_color);
+            $('#size-picker').val(sketchpad_size);
+            sketchpad.sketchpad_setColor = sketchpad_color;
+            sketchpad.penSize = sketchpad_size;
         }
         //发送消息
-        function wsSend(message){
+        function ws_send(message){
             websocket.send(message);
         }
 
         //////////////////////////////////////画板
         //创建画板
-        function initSketchpad() {
+        function sketchpad_init() {
             sketchpad = new Sketchpad({
                 element: '#sketchpad',
-                width: w,
-                height: h
+                width: sketchpad_width,
+                height: sketchpad_height
             });
         }
         //撤销
-        function undo() {
+        function sketchpad_undo() {
             sketchpad.undo();
-            canvasSend();
+            sketchpad_send();
         }
         //恢复
-        function redo() {
+        function sketchpad_redo() {
             sketchpad.redo();
-            canvasSend();
+            sketchpad_send();
         }
         //设置颜色
-        function color(event) {
-            color_canvas = $(event.target).val();
-            sketchpad.color = $(event.target).val();
+        function sketchpad_setColor(event) {
+            sketchpad_color = $(event.target).val();
+            sketchpad.color = sketchpad_color;
         }
         //设置粗细
-        function size(event) {
-            size_canvas = $(event.target).val();
-            sketchpad.penSize = $(event.target).val();
+        function sketchpad_setSize(event) {
+            sketchpad_size = $(event.target).val();
+            sketchpad.penSize = sketchpad_size;
         }
         //动画效果
-        function animateSketchpad() {
+        function sketchpad_animate() {
             sketchpad.animate(10);
         }
         //清除
-        function clearAll() {
-            initSketchpad();
-            canvasSend();
+        function sketchpad_clearAll() {
+            sketchpad_init();
+            sketchpad_send();
         }
         //发送画板数据，加一点延迟
-        function canvasSend() {
+        function sketchpad_send() {
             setTimeout(function () {
-                var json = sketchpad.toJSON();  // json 就是 settings 转json 之后的字符串
-                var obj = {};
-                obj.uuid = randomUuid;
-                obj.json = json;
-                var str = JSON.stringify(obj);
-                wsSend(str);
+                var sketchpadJson = sketchpad.toJSON();  // json 就是 settings 转json 之后的字符串
+                var canvasMsgObj = {};
+                canvasMsgObj.paintId = painterId;
+                canvasMsgObj.sketchpadJson = sketchpadJson;
+                var canvasMsg = JSON.stringify(canvasMsgObj);
+                ws_send(canvasMsg);
             },200);
         }
     </script>
 </head>
 <body>
-    <div style="text-align: center">
+    <div style="text-align: center; border: 1px solid black">
         <canvas class="sketchpad" id="sketchpad"></canvas>
     </div>
     <div style="text-align: center">
-        <button onclick="undo()">撤销</button>
-        <button onclick="redo()">恢复</button>
+        <button onclick="sketchpad_undo()">撤销</button>
+        <button onclick="sketchpad_redo()">恢复</button>
         <input id="color-picker" type="color">
         <input id="size-picker" type="range" min="1" max="50">
-        <button onclick="animateSketchpad()">动画</button>
-        <button onclick="clearAll()">换纸</button>
+        <button onclick="sketchpad_animate()">动画</button>
+        <button onclick="sketchpad_clearAll()">换纸</button>
     </div>
 </body>
 </html>

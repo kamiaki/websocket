@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>画板</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <script th:src="@{/package/jquery-3.3.1.min.js}"></script>
     <script th:src="@{/package/sketchpad.min.js}"></script>
     <script th:src="@{/res/js/util.js}"></script>
@@ -16,8 +15,8 @@
         //画板配置
         var sketchpad = null;
         var painterId = uuid();
-        var sketchpad_width = 600;
-        var sketchpad_height = 400;
+        var sketchpad_width = 200;
+        var sketchpad_height = 150;
         var sketchpad_color = '#000000';
         var sketchpad_size = 1;
 
@@ -145,16 +144,17 @@
     </script>
 </head>
 <body>
-    <div style="text-align: center; border: 1px solid black">
-        <canvas class="sketchpad" id="sketchpad"></canvas>
+    <div style="text-align: center; border: 1px solid black;width: 200px;margin: 0px auto">
+        <canvas class="sketchpad" id="sketchpad" style="border: 1px solid red"></canvas>
     </div>
-    <div style="text-align: center">
-        <button onclick="sketchpad_undo()">撤销</button>
-        <button onclick="sketchpad_redo()">恢复</button>
+    <div style="text-align: center; border: 1px solid black;width: 200px;margin: 0px auto">
         <input id="color-picker" type="color">
         <input id="size-picker" type="range" min="1" max="50">
+        <br>
+        <button onclick="sketchpad_undo()">撤销</button>
+        <button onclick="sketchpad_redo()">恢复</button>
         <button onclick="sketchpad_animate()">动画</button>
         <button onclick="sketchpad_clearAll()">换纸</button>
-    </div>
+    </>
 </body>
 </html>
